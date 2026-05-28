@@ -142,7 +142,8 @@ exports.updateCertificate = async (req, res) => {
       enrollmentNumber, 
       certificateNumber, 
       issueDate,
-      renewalDate 
+      renewalDate,
+      certificateImage
     } = req.body || {};
 
     const update = {};
@@ -190,6 +191,10 @@ exports.updateCertificate = async (req, res) => {
           .json({ success: false, message: 'Invalid renewalDate format' });
       }
       update.renewalDate = parsedDate;
+    }
+
+    if (certificateImage != null) {
+      update.certificateImage = certificateImage;
     }
 
     const cert = await Certificate.findByIdAndUpdate(id, update, {

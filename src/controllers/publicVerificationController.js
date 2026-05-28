@@ -78,29 +78,23 @@ exports.verifyResult = async (req, res) => {
 /* ================= CERTIFICATE ================= */
 exports.verifyCertificate = async (req, res) => {
   try {
-    const { rollNumber } = req.body;
+    const { rollNumber, certNo } = req.body;
+    
+    // Try certNo from URL params first, then from body
+    const certificateNumber = certNo || req.params.certNo || rollNumber;
 
-    // Find student by rollNumber only
-    const student = await Student.findOne({
-      rollNumber,
+    // Find certificate by certificateNumber
+    const certificate = await Certificate.findOne({
+      certificateNumber: certificateNumber
     });
 
-    if (!student) {
-      return res.status(404).json({ success: false, message: "Student not found" });
-    }
-
-    // Find certificates by student's enrollmentNumber
-    const certificates = await Certificate.find({
-      enrollmentNumber: student.enrollmentNo || student.rollNumber
-    });
-
-    if (!certificates || certificates.length === 0) {
+    if (!certificate) {
       return res.status(404).json({ success: false, message: "Certificate not found" });
     }
 
     res.json({
       success: true,
-      data: certificates, // Return array of certificates
+      data: certificate,
     });
   } catch (err) {
     console.error("Certificate verification error:", err);
