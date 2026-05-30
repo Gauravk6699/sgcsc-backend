@@ -6,11 +6,13 @@ const {
   verifyEnrollment,
   verifyResult,
   verifyCertificate,
+  verifyCertificateByNumber,
 } = require("../controllers/publicVerificationController");
 
 router.post("/enrollment", verifyEnrollment);
 router.post("/result", verifyResult);
 router.post("/certificate", verifyCertificate);
+router.get("/certificate/:certificateNumber", verifyCertificateByNumber);
 
 // ← ADD THIS — serves the QR scan verification page
 router.get("/verify/:certNo", (req, res) => {
