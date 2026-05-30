@@ -75,6 +75,26 @@ exports.verifyResult = async (req, res) => {
   }
 };
 
+/* ================= CERTIFICATE BY NUMBER (QR scan) ================= */
+exports.verifyCertificateByNumber = async (req, res) => {
+  try {
+    const { certificateNumber } = req.params;
+    if (!certificateNumber) {
+      return res.status(400).json({ success: false, message: "Certificate number required" });
+    }
+
+    const certificate = await Certificate.findOne({ certificateNumber });
+    if (!certificate) {
+      return res.status(404).json({ success: false, message: "Certificate not found" });
+    }
+
+    res.json({ success: true, data: certificate });
+  } catch (err) {
+    console.error("Certificate verification by number error:", err);
+    res.status(500).json({ success: false });
+  }
+};
+
 /* ================= CERTIFICATE ================= */
 exports.verifyCertificate = async (req, res) => {
   try {
