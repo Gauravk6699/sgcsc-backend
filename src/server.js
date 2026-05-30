@@ -153,6 +153,8 @@ app.get("/verify/:certNo", (req, res) => {
     .field label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 3px; }
     .field span { font-size: 0.97rem; color: #1a3a5c; font-weight: 500; }
     .field.full { grid-column: 1 / -1; }
+    .pdf-viewer { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 16px; }
+    .cert-title { font-size: 1.2rem; font-weight: 600; color: #1a3a5c; margin-bottom: 16px; text-align: center; }
   </style>
 </head>
 <body>
@@ -170,20 +172,97 @@ app.get("/verify/:certNo", (req, res) => {
         });
         const data = await res.json();
         const cert = data.data || {};
-        document.getElementById('card').innerHTML = data.success ? 
-          '<div class="badge valid">✓ Certificate Verified</div>' +
-          '<div class="cert-no-tag">Cert No: ' + certNo + '</div>' +
-          '<div class="cert-title">' + (cert.name || cert.studentName || 'Student') + '</div>' +
-          '<div class="field-grid">' +
-          '<div class="field"><label>Course</label><span>' + (cert.courseName || '-') + '</span></div>' +
-          '<div class="field"><label>Grade</label><span>' + (cert.grade || '-') + '</span></div>' +
-          '<div class="field"><label>Certificate No.</label><span>' + (cert.certificateNumber || '-') + '</span></div>' +
-          '<div class="field"><label>Enrollment No.</label><span>' + (cert.enrollmentNumber || '-') + '</span></div>' +
-          '<div class="field full"><label>Issue Date</label><span>' + (cert.issueDate ? new Date(cert.issueDate).toLocaleDateString('en-IN') : '-') + '</span></div>' +
-          '</div>' :
-          '<div class="badge invalid">✗ Certificate Not Found</div>';
+        if (data.success) {
+          document.getElementById('card').innerHTML = 
+            '<div class="badge valid">✓ Certificate Verified</div>' +
+            '<div class="cert-title">' + (cert.name || cert.studentName || 'Student') + '</div>' +
+            '<div class="field-grid">' +
+            '<div class="field"><label>Course</label><span>' + (cert.courseName || '-') + '</span></div>' +
+            '<div class="field"><label>Grade</label><span>' + (cert.grade || '-') + '</span></div>' +
+            '<div class="field"><label>Certificate No.</label><span>' + (cert.certificateNumber || '-') + '</span></div>' +
+            '<div class="field"><label>Enrollment No.</label><span>' + (cert.enrollmentNumber || '-') + '</span></div>' +
+            '<div class="field full"><label>Issue Date</label><span>' + (cert.issueDate ? new Date(cert.issueDate).toLocaleDateString('en-IN') : '-') + '</span></div>' +
+            '</div>' +
+            '<iframe class="pdf-viewer" src="' + (cert.certificateImage || '') + '" allowfullscreen></iframe>';
+        } else {
+          document.getElementById('card').innerHTML = 
+            '<div class="badge invalid">✗ Certificate Not Found</div>';
+        }
       } catch(e) {
         document.getElementById('card').innerHTML = '<div class="badge invalid">✗ Verification Failed</div>';
+      }
+    }
+    verify();
+  </script>
+</body>
+</html>`);
+});
+
+app.get("/verify/view/:certNo", (req, res) => {
+  const certNo = req.params.certNo;
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate — SGCSC</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f0f4f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .container { width: 100%; max-width: 800px; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); padding: 24px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .badge { display: inline-block; padding: 12px 24px; border-radius: 8px; font-weight: 600; }
+    .badge.valid { background: #e6f4ea; color: #1e7e34; }
+    .badge.invalid { background: #fce8e6; color: #c0392b; }
+    .cert-title { font-size: 1.4rem; font-weight: 600; color: #1a3a5c; margin: 16px 0; text-align: center; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .info-item { background: #f8fafc; padding: 12px; border-radius: 8px; }
+    .info-label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-value { font-size: 1rem; color: #1e293b; font-weight: 500; margin-top: 4px; }
+    .pdf-viewer { width: 100%; height: 70vh; border: 1px solid #e2e8f0; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="badge" id="status">Loading...</span>
+      <div class="cert-title" id="certTitle">-</div>
+    </div>
+    <div class="info-grid">
+      <div class="info-item"><div class="info-label">Course</div><div class="info-value" id="course">-</div></div>
+      <div class="info-item"><div class="info-label">Grade</div><div class="info-value" id="grade">-</div></div>
+      <div class="info-item"><div class="info-label">Certificate No.</div><div class="info-value" id="certNo">-</div></div>
+      <div class="info-item"><div class="info-label">Issue Date</div><div class="info-value" id="issueDate">-</div></div>
+    </div>
+    <iframe class="pdf-viewer" id="pdfViewer" src="" allowfullscreen></iframe>
+  </div>
+  <script>
+    const certNo = "${certNo}";
+    async function verify() {
+      try {
+        const res = await fetch('/verify/certificate', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({certNo})
+        });
+        const data = await res.json();
+        const cert = data.data || {};
+        if (data.success && cert.certificateImage) {
+          document.getElementById('status').className = 'badge valid';
+          document.getElementById('status').textContent = '✓ Certificate Verified';
+          document.getElementById('certTitle').textContent = cert.name || cert.studentName || 'Certificate';
+          document.getElementById('course').textContent = cert.courseName || '-';
+          document.getElementById('grade').textContent = cert.grade || '-';
+          document.getElementById('certNo').textContent = cert.certificateNumber || '-';
+          document.getElementById('issueDate').textContent = cert.issueDate ? new Date(cert.issueDate).toLocaleDateString('en-IN') : '-';
+          document.getElementById('pdfViewer').src = cert.certificateImage;
+        } else {
+          document.getElementById('status').className = 'badge invalid';
+          document.getElementById('status').textContent = '✗ Certificate Not Found';
+        }
+      } catch(e) {
+        document.getElementById('status').className = 'badge invalid';
+        document.getElementById('status').textContent = '✗ Verification Failed';
       }
     }
     verify();
