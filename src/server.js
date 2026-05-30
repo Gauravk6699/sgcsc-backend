@@ -132,117 +132,52 @@ app.use("/api/franchise/typing-certificates", require("./routes/franchiseTypingC
 
 /* ===================== PUBLIC VERIFICATION ===================== */
 const publicVerificationController = require("./controllers/publicVerificationController");
-app.get("/verify/:certNo", (req, res) => {
-  const certNo = req.params.certNo;
-  res.send(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Certificate Verification — SGCSC</title>
-  <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 16px; }
-    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); max-width: 540px; width: 100%; padding: 36px 32px; }
-    .badge { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 8px; font-weight: 600; margin-bottom: 28px; }
-    .badge.valid { background: #e6f4ea; color: #1e7e34; }
-    .badge.invalid { background: #fce8e6; color: #c0392b; }
-    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 24px; }
-    @media (max-width: 480px) { .field-grid { grid-template-columns: 1fr; } }
-    .field { display: flex; flex-direction: column; }
-    .field label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #888; margin-bottom: 3px; }
-    .field span { font-size: 0.97rem; color: #1a3a5c; font-weight: 500; }
-    .field.full { grid-column: 1 / -1; }
-    .pdf-viewer { width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 16px; }
-    .cert-title { font-size: 1.2rem; font-weight: 600; color: #1a3a5c; margin-bottom: 16px; text-align: center; }
-  </style>
-</head>
-<body>
-  <div class="card" id="card">
-    <div style="text-align:center;padding:24px 0;">Loading...</div>
-  </div>
-  <script>
-    const certNo = "${certNo}";
-    async function verify() {
-      try {
-        const res = await fetch('/verify/certificate', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({certNo})
-        });
-        const data = await res.json();
-        const cert = data.data || {};
-        if (data.success) {
-          document.getElementById('card').innerHTML = 
-            '<div class="badge valid">✓ Certificate Verified</div>' +
-            '<div class="cert-title">' + (cert.name || cert.studentName || 'Student') + '</div>' +
-            '<div class="field-grid">' +
-            '<div class="field"><label>Course</label><span>' + (cert.courseName || '-') + '</span></div>' +
-            '<div class="field"><label>Grade</label><span>' + (cert.grade || '-') + '</span></div>' +
-            '<div class="field"><label>Certificate No.</label><span>' + (cert.certificateNumber || '-') + '</span></div>' +
-            '<div class="field"><label>Enrollment No.</label><span>' + (cert.enrollmentNumber || '-') + '</span></div>' +
-            '<div class="field full"><label>Issue Date</label><span>' + (cert.issueDate ? new Date(cert.issueDate).toLocaleDateString('en-IN') : '-') + '</span></div>' +
-            '</div>' +
-            '<iframe class="pdf-viewer" src="' + (cert.certificateImage || '') + '" allowfullscreen></iframe>';
-        } else {
-          document.getElementById('card').innerHTML = 
-            '<div class="badge invalid">✗ Certificate Not Found</div>';
-        }
-      } catch(e) {
-        document.getElementById('card').innerHTML = '<div class="badge invalid">✗ Verification Failed</div>';
-      }
-    }
-    verify();
-  </script>
-</body>
-</html>`);
-});
+const Certificate = require("./models/Certificate");
 
-app.get("/verify/view/:certNo", async (req, res) => {
+// Serve certificate image directly — works for all QR URL patterns
+async function serveCertificateImage(req, res) {
   try {
-    const certificate = await require("./models/Certificate").findOne({
-      certificateNumber: req.params.certNo
-    });
+    const certNo = req.params.certNo;
+    const certificate = await Certificate.findOne({ certificateNumber: certNo });
 
     if (!certificate || !certificate.certificateImage) {
-      return res.status(404).send(`
-<!DOCTYPE html><html><head><title>Certificate Not Found</title>
+      return res.status(404).send(`<!DOCTYPE html><html><head><title>Certificate Not Found</title>
 <style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f0f4f8;}
 .card{background:#fff;padding:40px;border-radius:12px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.1);}
 h2{color:#c0392b;}</style></head>
-<body><div class="card"><h2>Certificate Not Found</h2><p>No certificate matching <strong>${req.params.certNo}</strong> was found.</p></div></body></html>`);
+<body><div class="card"><h2>Certificate Not Found</h2><p>No certificate matching <strong>${certNo}</strong> was found.</p></div></body></html>`);
     }
 
     const imageData = certificate.certificateImage;
 
-    // If it's a base64 data URL, extract the raw data and serve as image
     if (imageData.startsWith('data:image/')) {
       const matches = imageData.match(/^data:(image\/\w+);base64,(.+)$/);
       if (matches) {
-        const contentType = matches[1];
         const buffer = Buffer.from(matches[2], 'base64');
-        res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `inline; filename="certificate_${req.params.certNo}.jpg"`);
+        res.setHeader('Content-Type', matches[1]);
+        res.setHeader('Content-Disposition', `inline; filename="certificate_${certNo}.jpg"`);
         return res.send(buffer);
       }
     }
 
-    // If it's a base64 PDF data URL
     if (imageData.startsWith('data:application/pdf')) {
-      const base64Data = imageData.replace(/^data:application\/pdf;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
+      const buffer = Buffer.from(imageData.replace(/^data:application\/pdf;base64,/, ''), 'base64');
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="certificate_${req.params.certNo}.pdf"`);
+      res.setHeader('Content-Disposition', `inline; filename="certificate_${certNo}.pdf"`);
       return res.send(buffer);
     }
 
-    // Fallback — redirect to the image URL
     res.redirect(imageData);
   } catch (err) {
     console.error("Certificate view error:", err);
     res.status(500).send("Server error");
   }
-});
+}
+
+// All possible QR URL patterns — old and new certificates
+app.get("/verify/view/:certNo", serveCertificateImage);
+app.get("/verify/:certNo", serveCertificateImage);
+app.get("/view/:certNo", serveCertificateImage);
 app.post("/verify/certificate", publicVerificationController.verifyCertificate);
 
 
