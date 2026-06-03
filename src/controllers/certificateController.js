@@ -46,7 +46,7 @@ exports.createCertificate = async (req, res) => {
     // Resolve org name — centerName wins, atcName is fallback, never store null
     const orgName = (centerName && String(centerName).trim())
       || (atcName && String(atcName).trim())
-      || '';
+      || 'Shree ganpati computer and study Centre';
 
     const cert = await Certificate.create({
       name:              String(name).trim(),
