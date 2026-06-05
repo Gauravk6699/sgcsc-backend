@@ -1,6 +1,7 @@
 const Student = require("../models/Student");
 const Result = require("../models/Result");
 const Certificate = require("../models/Certificate");
+const TypingCertificate = require("../models/TypingCertificate");
 const Marksheet = require("../models/Marksheet");
 
 /* ================= ENROLLMENT ================= */
@@ -118,6 +119,26 @@ exports.verifyCertificate = async (req, res) => {
     });
   } catch (err) {
     console.error("Certificate verification error:", err);
+    res.status(500).json({ success: false });
+  }
+};
+
+/* ================= TYPING CERTIFICATE BY NUMBER (QR scan) ================= */
+exports.verifyTypingCertificateByNumber = async (req, res) => {
+  try {
+    const { certificateNo } = req.params;
+    if (!certificateNo) {
+      return res.status(400).json({ success: false, message: "Certificate number required" });
+    }
+
+    const cert = await TypingCertificate.findOne({ certificateNo });
+    if (!cert) {
+      return res.status(404).json({ success: false, message: "Typing certificate not found" });
+    }
+
+    res.json({ success: true, data: cert });
+  } catch (err) {
+    console.error("Typing certificate verification error:", err);
     res.status(500).json({ success: false });
   }
 };

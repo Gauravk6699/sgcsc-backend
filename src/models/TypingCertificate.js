@@ -62,6 +62,11 @@ const typingCertificateSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Student photo URL (used on the certificate)
+    photo: {
+      type: String,
+      required: false
+    },
     // Certificate image stored as base64 or URL
     certificateImage: {
       type: String,
