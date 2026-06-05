@@ -130,7 +130,7 @@ app.use("/api/franchise/students", require("./routes/franchiseStudentRoutes"));
 app.use("/api/franchise/courses", require("./routes/franchiseCourseRoutes"));
 app.use("/api/franchise/subjects", require("./routes/franchiseSubjectRoutes"));
 app.use("/api/franchise/results", require("./routes/franchiseResultRoutes"));
-app.use("/api/franchise/certificates", require("./routes/franchiseCertificateRoutes"));
+app.use("/api/franchise/certificates", require("./routes/franchiseStudentCertificateRoutes"));
 app.use("/api/franchise/franchise-certificates", require("./routes/franchiseFranchiseCertificateRoutes"));
 app.use("/api/franchise/typing-certificates", require("./routes/franchiseTypingCertificateRoutes"));
 

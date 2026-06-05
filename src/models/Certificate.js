@@ -82,6 +82,17 @@ const certificateSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    // Photo URL for student photo on certificate (optional — may be Cloudinary URL)
+    photo: {
+      type: String,
+      default: '',
+    },
+    // Marks a certificate issued by a franchise (null = admin-issued)
+    franchiseId: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
