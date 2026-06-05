@@ -5,6 +5,8 @@ const Result = require("../models/Result");
 const Certificate = require("../models/Certificate");
 const AdmitCard = require("../models/AdmitCard");
 const IDCard = require("../models/IDCard");
+const Marksheet = require("../models/Marksheet");
+const TypingCertificate = require("../models/TypingCertificate");
 const studentAuth = require("../middleware/studentAuth");
 
 router.get("/me", studentAuth, async (req, res) => {
@@ -285,6 +287,61 @@ router.get("/id-card", studentAuth, async (req, res) => {
     });
   } catch (err) {
     console.error("ID card fetch error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* ================= STUDENT MARKSHEET ================= */
+router.get("/marksheet", studentAuth, async (req, res) => {
+  try {
+    const student = await Student.findById(req.studentId).lean();
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const enrollmentNo = student.enrollmentNo || student.rollNumber;
+
+    let marksheets = await Marksheet.find({ enrollmentNo }).lean();
+    if (!marksheets || marksheets.length === 0) {
+      marksheets = await Marksheet.find({ rollNumber: student.rollNumber }).lean();
+    }
+
+    if (!marksheets || marksheets.length === 0) {
+      return res.status(404).json({ success: false, message: "No marksheet found" });
+    }
+
+    res.json({ success: true, data: marksheets });
+  } catch (err) {
+    console.error("Marksheet fetch error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/* ================= STUDENT TYPING CERTIFICATE ================= */
+router.get("/typing-certificate", studentAuth, async (req, res) => {
+  try {
+    const student = await Student.findById(req.studentId).lean();
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const enrollmentNo = student.enrollmentNo || student.rollNumber;
+
+    let certs = await TypingCertificate.find({ enrollmentNumber: enrollmentNo }).lean();
+    if (!certs || certs.length === 0) {
+      certs = await TypingCertificate.find({ enrollmentNumber: student.rollNumber }).lean();
+    }
+    if (!certs || certs.length === 0) {
+      certs = await TypingCertificate.find({ studentName: student.name }).lean();
+    }
+
+    if (!certs || certs.length === 0) {
+      return res.status(404).json({ success: false, message: "No typing certificate found" });
+    }
+
+    res.json({ success: true, data: certs });
+  } catch (err) {
+    console.error("Typing certificate fetch error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });

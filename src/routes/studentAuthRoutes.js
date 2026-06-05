@@ -8,12 +8,14 @@ router.post("/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // 1️⃣ Find student by username
-    const student = await Student.findOne({ username });
+    // 1️⃣ Find student by roll number or username
+    const student = await Student.findOne({
+      $or: [{ rollNumber: username }, { username }],
+    });
     if (!student) {
       return res.status(401).json({
         success: false,
-        message: "Invalid username or password",
+        message: "Invalid roll number or password",
       });
     }
 
