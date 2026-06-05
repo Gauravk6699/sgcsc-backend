@@ -1,15 +1,9 @@
-# node
-node_modules/
-npm-debug.log
-
-# env
+node_modules
 .env
-.env.local
-.env.*.local
-
-# uploads (keep user files out of git)
-uploads/
-
-# editor / OS
-.vscode/
 .DS_Store
+*.log
+npm-debug.log*
+uploads
+.git
+.gitignore
+README.md

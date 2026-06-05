@@ -52,9 +52,9 @@ if (NODE_ENV === "development") {
 }
 
 /* ===================== CORS ===================== */
-app.use(
-  cors({
-    origin: [
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((url) => url.trim())
+  : [
       "http://localhost:3000",
       "http://localhost:3001",
       "https://sgcsc-site.vercel.app",
@@ -62,7 +62,11 @@ app.use(
       "https://www.sgcsc.in",
       "https://sgcsc.in",
       "https://admin.sgcsc.in",
-    ],
+    ];
+
+app.use(
+  cors({
+    origin: allowedOrigins,
     credentials: true,
   })
 );

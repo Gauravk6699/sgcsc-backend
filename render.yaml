@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: sgcsc-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: SMTP_PORT
+        value: 2525
+      - key: FROM_EMAIL
+        value: "SGCSC Portal <noreply@sgcsc.com>"
+      - key: FRONTEND_URL
+        value: https://sgcsc-site.vercel.app
+      - key: SERVER_URL
+        value: https://sgcsc-backend.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: "https://sgcsc-site.vercel.app,https://sgcsc-admin.vercel.app,https://www.sgcsc.in,https://sgcsc.in,https://admin.sgcsc.in"
+    secrets:
+      - MONGO_URI
+      - JWT_SECRET
+      - SMTP_USER
+      - SMTP_PASS
+      - CLOUDINARY_CLOUD_NAME
+      - CLOUDINARY_API_KEY
+      - CLOUDINARY_API_SECRET
