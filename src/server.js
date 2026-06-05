@@ -133,6 +133,9 @@ app.use("/api/franchise/results", require("./routes/franchiseResultRoutes"));
 app.use("/api/franchise/certificates", require("./routes/franchiseStudentCertificateRoutes"));
 app.use("/api/franchise/franchise-certificates", require("./routes/franchiseFranchiseCertificateRoutes"));
 app.use("/api/franchise/typing-certificates", require("./routes/franchiseTypingCertificateRoutes"));
+app.use("/api/franchise/id-cards", require("./routes/franchiseIdCardRoutes"));
+app.use("/api/franchise/admit-cards", require("./routes/franchiseAdmitCardRoutes"));
+app.use("/api/franchise/marksheets", require("./routes/franchiseMarksheetRoutes"));
 
 /* ===================== PUBLIC VERIFICATION ===================== */
 const publicVerificationController = require("./controllers/publicVerificationController");

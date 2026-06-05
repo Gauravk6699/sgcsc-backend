@@ -70,6 +70,11 @@ const idCardSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Student',
     },
+    franchiseId: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -69,6 +69,11 @@ const admitCardSchema = new mongoose.Schema(
       ref: 'Course',
       default: null,
     },
+    franchiseId: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );

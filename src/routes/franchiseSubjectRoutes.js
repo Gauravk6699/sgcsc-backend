@@ -31,38 +31,11 @@ async function deductCredits(franchiseId, amount, description) {
   return false;
 }
 
-// Get subjects for this franchise (own subjects + subjects from admin-created courses)
+// Get subjects for this franchise (own subjects only)
 router.get("/", async (req, res) => {
   try {
     const franchiseId = req.franchise._id;
-    
-    // First, get the courses available to this franchise (own + admin courses)
-    const Course = require("../models/Course");
-    const availableCourses = await Course.find({
-      $or: [
-        { createdBy: franchiseId },
-        { createdBy: { $exists: false } },
-        { createdBy: null }
-      ]
-    }).select('_id').lean();
-    
-    const courseIds = availableCourses.map(c => c._id);
-    
-    // Get subjects: either created by this franchise OR belonging to available courses
-    const subjects = await Subject.find({
-      $or: [
-        { createdBy: franchiseId },  // Own subjects
-        { 
-          course: { $in: courseIds },  // Subjects from available courses
-          createdBy: { $exists: false }  // Admin subjects (no createdBy)
-        },
-        {
-          course: { $in: courseIds },
-          createdBy: null
-        }
-      ]
-    }).populate('course', 'title name').lean();
-    
+    const subjects = await Subject.find({ createdBy: franchiseId }).populate('course', 'title name').lean();
     res.json(subjects);
   } catch (err) {
     console.error("Franchise get subjects error:", err);
@@ -70,36 +43,11 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get single subject (own subjects or subjects from available courses)
+// Get single subject (own subjects only)
 router.get("/:id", async (req, res) => {
   try {
     const franchiseId = req.franchise._id;
-    
-    // First get the available courses
-    const Course = require("../models/Course");
-    const availableCourses = await Course.find({
-      $or: [
-        { createdBy: franchiseId },
-        { createdBy: { $exists: false } },
-        { createdBy: null }
-      ]
-    }).select('_id').lean();
-    const courseIds = availableCourses.map(c => c._id);
-    
-    const subject = await Subject.findOne({
-      _id: req.params.id,
-      $or: [
-        { createdBy: franchiseId },  // Own subject
-        { 
-          course: { $in: courseIds },
-          createdBy: { $exists: false }
-        },
-        {
-          course: { $in: courseIds },
-          createdBy: null
-        }
-      ]
-    }).populate('course', 'title name').lean();
+    const subject = await Subject.findOne({ _id: req.params.id, createdBy: franchiseId }).populate('course', 'title name').lean();
     
     if (!subject) {
       return res.status(404).json({ message: "Subject not found" });
