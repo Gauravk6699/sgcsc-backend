@@ -17,8 +17,14 @@ const subjectSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Maximum marks for this subject in exam/marksheet
+    // Maximum theory marks for this subject
     maxMarks: {
+      type: Number,
+      default: 0,
+    },
+
+    // Maximum practical marks for this subject
+    maxPracticalMarks: {
       type: Number,
       default: 0,
     },

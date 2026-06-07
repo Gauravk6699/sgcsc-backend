@@ -4,7 +4,7 @@ const Course = require('../models/Course');
 const mongoose = require('mongoose');
 
 exports.createSubject = async (req, res) => {
-  const { course, name, maxMarks = 0, minMarks = 0 } = req.body;
+  const { course, name, maxMarks = 0, maxPracticalMarks = 0, minMarks = 0 } = req.body;
 
   if (!course || !name?.trim()) {
     return res.status(400).json({
@@ -25,6 +25,7 @@ exports.createSubject = async (req, res) => {
     course,
     name: name.trim(),
     maxMarks: Number(maxMarks),
+    maxPracticalMarks: Number(maxPracticalMarks),
     minMarks: Number(minMarks),
   });
 
