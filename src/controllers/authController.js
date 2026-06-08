@@ -168,7 +168,7 @@ exports.franchiseLogin = async (req, res) => {
         id: franchise._id,
         role: "franchise",
       },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: "7d" }
     );
 

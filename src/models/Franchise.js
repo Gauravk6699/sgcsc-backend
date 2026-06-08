@@ -19,6 +19,7 @@ const franchiseSchema = new mongoose.Schema(
 
     aadharNumber: { type: String, trim: true },
     panNumber: { type: String, trim: true },
+    utrNumber: { type: String, trim: true },
 
     aadharFront: String,
     aadharBack: String,

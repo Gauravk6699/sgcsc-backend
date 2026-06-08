@@ -24,16 +24,38 @@ const fileFrom = (req, field) =>
 
 exports.createFranchisePublic = async (req, res) => {
   try {
+    const uname = req.body.username ? req.body.username.trim().toLowerCase() : null;
+
+    if (uname) {
+      const [studentExists, franchiseExists] = await Promise.all([
+        Student.findOne({ username: uname }),
+        Franchise.findOne({ username: uname }),
+      ]);
+      if (studentExists || franchiseExists) {
+        return res.status(409).json({
+          success: false,
+          message: 'Username already exists',
+        });
+      }
+    }
+
+    const passwordHash = req.body.password ? await hashPassword(req.body.password) : undefined;
+
     const franchise = await Franchise.create({
-      instituteId: `TMP-${Date.now()}`, // TEMP UNIQUE ID
+      instituteId: `TMP-${Date.now()}`,
 
       ownerName: req.body.ownerName,
       instituteName: req.body.instituteName,
       dob: req.body.dob,
 
+      aadharNumber: req.body.aadharNumber,
+      panNumber: req.body.panNumber,
+      utrNumber: req.body.utrNumber,
+
       address: req.body.address,
       state: req.body.state,
       district: req.body.district,
+      centerSpace: req.body.centerSpace,
 
       operatorsCount: Number(req.body.numTeachers || 0),
       classRooms: Number(req.body.numClassrooms || 0),
@@ -41,6 +63,7 @@ exports.createFranchisePublic = async (req, res) => {
 
       ownerQualification: req.body.qualification,
 
+      hasReception: req.body.hasReception === "Yes",
       hasStaffRoom: req.body.staffRoom === "Yes",
       hasWaterSupply: req.body.waterSupply === "Yes",
       hasToilet: req.body.toilet === "Yes",
@@ -49,15 +72,19 @@ exports.createFranchisePublic = async (req, res) => {
       contact: req.body.contact,
       email: req.body.email,
 
-      balance: 0, // 🔒 ALWAYS start with 0
-
       // Files
       aadharFront: req.files?.aadharFront?.[0]?.path,
       aadharBack: req.files?.aadharBack?.[0]?.path,
+      panImage: req.files?.panImage?.[0]?.path,
       institutePhoto: req.files?.institutePhoto?.[0]?.path,
       ownerSign: req.files?.ownerSign?.[0]?.path,
       ownerImage: req.files?.ownerImage?.[0]?.path,
+      certificateFile: req.files?.certificateFile?.[0]?.path,
 
+      username: uname || undefined,
+      passwordHash,
+
+      balance: 0,
       status: "pending",
     });
 
@@ -67,6 +94,12 @@ exports.createFranchisePublic = async (req, res) => {
       data: franchise,
     });
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: 'Username already taken',
+      });
+    }
     console.error("Public franchise create error:", err);
     return res.status(400).json({
       success: false,
@@ -260,6 +293,10 @@ exports.getFranchises = async (req, res) => {
 exports.approveFranchise = async (req, res) => {
   const franchise = await Franchise.findById(req.params.id);
 
+  if (!franchise) {
+    return res.status(404).json({ success: false, message: 'Franchise not found' });
+  }
+
   franchise.status = 'approved';
   franchise.approvedAt = new Date();
 
@@ -270,6 +307,10 @@ exports.approveFranchise = async (req, res) => {
 
 exports.rejectFranchise = async (req, res) => {
   const franchise = await Franchise.findById(req.params.id);
+
+  if (!franchise) {
+    return res.status(404).json({ success: false, message: 'Franchise not found' });
+  }
 
   franchise.status = 'rejected';
 
@@ -287,11 +328,6 @@ exports.updateFranchise = async (req, res) => {
   try {
     const franchise = await Franchise.findById(req.params.id);
 
-    if (req.body.balance !== undefined) {
-      franchise.balance = Number(req.body.balance);
-    }
-
-
     if (!franchise) {
       return res.status(404).json({
         success: false,
@@ -306,6 +342,10 @@ if (req.body.instituteName !== undefined) franchise.instituteName = req.body.ins
 if (req.body.address !== undefined) franchise.address = req.body.address;
 if (req.body.state !== undefined) franchise.state = req.body.state;
 if (req.body.district !== undefined) franchise.district = req.body.district;
+if (req.body.centerSpace !== undefined) franchise.centerSpace = req.body.centerSpace;
+if (req.body.aadharNumber !== undefined) franchise.aadharNumber = req.body.aadharNumber;
+if (req.body.panNumber !== undefined) franchise.panNumber = req.body.panNumber;
+if (req.body.utrNumber !== undefined) franchise.utrNumber = req.body.utrNumber;
 if (req.body.operatorsCount !== undefined) franchise.operatorsCount = Number(req.body.operatorsCount);
 if (req.body.classRooms !== undefined) franchise.classRooms = Number(req.body.classRooms);
 if (req.body.totalComputers !== undefined) franchise.totalComputers = Number(req.body.totalComputers);
@@ -314,12 +354,11 @@ if (req.body.contact !== undefined) franchise.contact = req.body.contact;
 if (req.body.email !== undefined) franchise.email = req.body.email;
 if (req.body.ownerQualification !== undefined) franchise.ownerQualification = req.body.ownerQualification;
 if (req.body.username !== undefined) franchise.username = req.body.username;
+if (req.body.balance !== undefined) franchise.balance = Number(req.body.balance);
 
-
-/* ---------- DATE OF BIRTH (CRITICAL FIX) ---------- */
+/* ---------- DATE OF BIRTH ---------- */
 if (req.body.dob) {
-  const [dd, mm, yyyy] = req.body.dob.split("-");
-  const parsedDob = new Date(`${yyyy}-${mm}-${dd}`);
+  const parsedDob = new Date(req.body.dob);
   if (!isNaN(parsedDob)) {
     franchise.dob = parsedDob;
   }
