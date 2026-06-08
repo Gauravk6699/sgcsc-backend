@@ -84,30 +84,34 @@ const parseDob = (dobStr) => {
 /* ================= RESULT ================= */
 exports.verifyResult = async (req, res) => {
   try {
-    const { rollNumber } = req.body;
-    console.log("Verifying result for rollNumber:", rollNumber);
+    const { enrollmentNo, dob } = req.body;
 
-    // Find marksheets by rollNumber or enrollmentNo (marksheets are the final results)
-    const marksheets = await Marksheet.find({
-      $or: [
-        { rollNumber: rollNumber },
-        { enrollmentNo: rollNumber }
-      ]
-    });
-    console.log("Found marksheets:", marksheets.length);
-
-    if (marksheets.length > 0) {
-      console.log("First marksheet rollNumber:", marksheets[0].rollNumber, "enrollmentNo:", marksheets[0].enrollmentNo);
+    if (!enrollmentNo) {
+      return res.status(400).json({ success: false, message: "Enrollment number required" });
     }
+    if (!dob) {
+      return res.status(400).json({ success: false, message: "Date of birth required" });
+    }
+
+    // Search by enrollmentNo only — roll number lookup is intentionally disabled
+    const marksheets = await Marksheet.find({ enrollmentNo });
 
     if (!marksheets || marksheets.length === 0) {
       return res.status(404).json({ success: false, message: "Result not found" });
     }
 
-    res.json({
-      success: true,
-      data: marksheets, // Return array of marksheets
-    });
+    // Verify DOB against the first marksheet
+    const inputDob = new Date(dob);
+    const storedDob = new Date(marksheets[0].dob);
+    if (
+      inputDob.getFullYear() !== storedDob.getFullYear() ||
+      inputDob.getMonth() !== storedDob.getMonth() ||
+      inputDob.getDate() !== storedDob.getDate()
+    ) {
+      return res.status(404).json({ success: false, message: "Result not found" });
+    }
+
+    res.json({ success: true, data: marksheets });
   } catch (err) {
     console.error("Result verification error:", err);
     res.status(500).json({ success: false });
