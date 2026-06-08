@@ -55,7 +55,25 @@ exports.createStudent = async (req, res) => {
       });
     }
 
+    // Explicit uniqueness check across the entire platform (all franchises)
+    const rollExists = await Student.findOne({ rollNumber: rollNumber.trim() }).lean();
+    if (rollExists) {
+      return res.status(400).json({
+        success: false,
+        message: `Roll number "${rollNumber.trim()}" is already assigned to another student on this platform.`,
+      });
+    }
 
+    const enrollmentNoFromBody = body.enrollmentNo;
+    if (enrollmentNoFromBody && enrollmentNoFromBody.trim()) {
+      const enrollExists = await Student.findOne({ enrollmentNo: enrollmentNoFromBody.trim() }).lean();
+      if (enrollExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Enrollment number "${enrollmentNoFromBody.trim()}" is already assigned to another student on this platform.`,
+        });
+      }
+    }
 
     const student = await Student.create({
       name: name.trim(),
@@ -84,7 +102,7 @@ exports.createStudent = async (req, res) => {
       sessionEnd: sessionEnd || null,
       joinDate: sessionStart || new Date(),
 
-      username: username || "",
+      username: username && username.trim() ? username.trim() : undefined,
       password: password,
 
       // 🔥 Cloudinary URL
@@ -114,24 +132,16 @@ exports.createStudent = async (req, res) => {
 } catch (err) {
   console.error("createStudent error:", err);
 
-  if (err.code === 11000 && err.keyPattern?.rollNumber) {
+  if (err.code === 11000) {
+    const key = Object.keys(err.keyPattern || {})[0];
+    const messages = {
+      rollNumber:   "Roll number already exists. Each student must have a unique roll number across the entire platform.",
+      enrollmentNo: "Enrollment number already exists. Each student must have a unique enrollment number across the entire platform.",
+      username:     "Username already taken. Please choose a different username.",
+    };
     return res.status(400).json({
       success: false,
-      message: "Enrollment number already exists",
-    });
-  }
-
-  if (err.code === 11000 && err.keyPattern?.enrollmentNo) {
-    return res.status(400).json({
-      success: false,
-      message: "Enrollment number already exists",
-    });
-  }
-
-  if (err.code === 11000 && err.keyPattern?.username) {
-    return res.status(400).json({
-      success: false,
-      message: "Enrollment number already exists",
+      message: messages[key] || "A student with this information already exists.",
     });
   }
 
@@ -330,6 +340,27 @@ exports.updateStudent = async (req, res) => {
       return res.status(404).json({ success: false, message: "Not found" });
     }
 
+    // Explicit uniqueness check for rollNumber and enrollmentNo when they are being changed
+    if (update.rollNumber && update.rollNumber.trim() !== student.rollNumber) {
+      const conflict = await Student.findOne({ rollNumber: update.rollNumber.trim(), _id: { $ne: student._id } }).lean();
+      if (conflict) {
+        return res.status(400).json({
+          success: false,
+          message: `Roll number "${update.rollNumber.trim()}" is already assigned to another student on this platform.`,
+        });
+      }
+    }
+
+    if (update.enrollmentNo && update.enrollmentNo.trim() !== student.enrollmentNo) {
+      const conflict = await Student.findOne({ enrollmentNo: update.enrollmentNo.trim(), _id: { $ne: student._id } }).lean();
+      if (conflict) {
+        return res.status(400).json({
+          success: false,
+          message: `Enrollment number "${update.enrollmentNo.trim()}" is already assigned to another student on this platform.`,
+        });
+      }
+    }
+
     // If password is being updated
     if (update.password && update.password.trim() !== "") {
       student.password = update.password; // This triggers pre('save') hook
@@ -354,6 +385,18 @@ exports.updateStudent = async (req, res) => {
 
   } catch (err) {
     console.error("updateStudent error:", err);
+    if (err.code === 11000) {
+      const key = Object.keys(err.keyPattern || {})[0];
+      const messages = {
+        rollNumber:   "Roll number already exists on another student.",
+        enrollmentNo: "Enrollment number already exists on another student.",
+        username:     "Username already taken.",
+      };
+      return res.status(400).json({
+        success: false,
+        message: messages[key] || "A student with this information already exists.",
+      });
+    }
     res.status(500).json({ success: false, message: err.message });
   }
 };
