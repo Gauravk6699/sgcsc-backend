@@ -84,17 +84,16 @@ const parseDob = (dobStr) => {
 /* ================= RESULT ================= */
 exports.verifyResult = async (req, res) => {
   try {
-    const { enrollmentNo, dob } = req.body;
+    const { rollNumber, dob } = req.body;
 
-    if (!enrollmentNo) {
-      return res.status(400).json({ success: false, message: "Enrollment number required" });
+    if (!rollNumber) {
+      return res.status(400).json({ success: false, message: "Roll number required" });
     }
     if (!dob) {
       return res.status(400).json({ success: false, message: "Date of birth required" });
     }
 
-    // Search by enrollmentNo only — roll number lookup is intentionally disabled
-    const marksheets = await Marksheet.find({ enrollmentNo });
+    const marksheets = await Marksheet.find({ rollNumber });
 
     if (!marksheets || marksheets.length === 0) {
       return res.status(404).json({ success: false, message: "Result not found" });
