@@ -99,7 +99,7 @@ const certificateSchema = new mongoose.Schema(
 
 // Indexes for faster lookups
 certificateSchema.index({ enrollmentNumber: 1 });
-certificateSchema.index({ certificateNumber: 1 });
+certificateSchema.index({ certificateNumber: 1 }, { unique: true });
 certificateSchema.index({ name: 1 });
 certificateSchema.index({ courseName: 1 });
 

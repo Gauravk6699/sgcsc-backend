@@ -79,7 +79,7 @@ const typingCertificateSchema = new mongoose.Schema(
 // Index for faster lookups
 typingCertificateSchema.index({ studentName: 1 });
 typingCertificateSchema.index({ enrollmentNumber: 1 });
-typingCertificateSchema.index({ certificateNo: 1 });
+typingCertificateSchema.index({ certificateNo: 1 }, { unique: true });
 
 typingCertificateSchema.set('toJSON', {
   transform: (doc, ret) => {

@@ -14,6 +14,11 @@ router.post("/", async (req, res) => {
       });
     }
 
+    const duplicate = await TypingCertificate.findOne({ certificateNo: String(certificateNo).trim() });
+    if (duplicate) {
+      return res.status(400).json({ success: false, message: 'Certificate number already exists. Use a unique certificate number.' });
+    }
+
     const typingCertificate = new TypingCertificate({
       studentName: String(studentName).trim(),
       fatherHusbandName: String(fatherHusbandName).trim(),

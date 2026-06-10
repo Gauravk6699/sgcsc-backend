@@ -37,6 +37,14 @@ router.get("/:id", async (req, res) => {
 // Create typing certificate
 router.post("/", async (req, res) => {
   try {
+    const { certificateNo } = req.body;
+    if (certificateNo) {
+      const duplicate = await TypingCertificate.findOne({ certificateNo: String(certificateNo).trim() });
+      if (duplicate) {
+        return res.status(400).json({ message: 'Certificate number already exists. Use a unique certificate number.' });
+      }
+    }
+
     const franchise = await Franchise.findById(req.franchise._id);
     const certificateData = {
       ...req.body,

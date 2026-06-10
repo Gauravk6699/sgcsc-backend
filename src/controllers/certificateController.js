@@ -43,6 +43,11 @@ exports.createCertificate = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid issueDate format' });
     }
 
+    const duplicate = await Certificate.findOne({ certificateNumber: String(certificateNumber).trim() });
+    if (duplicate) {
+      return res.status(400).json({ success: false, message: 'Certificate number already exists. Use a unique certificate number.' });
+    }
+
     // Resolve org name — centerName wins, atcName is fallback, never store null
     const orgName = (centerName && String(centerName).trim())
       || (atcName && String(atcName).trim())
