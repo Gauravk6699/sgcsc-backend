@@ -147,7 +147,18 @@ exports.verifyCertificateByNumber = async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: certificate });
+    const certData = certificate.toObject();
+    if (!certData.photo) {
+      const student = await Student.findOne({
+        $or: [
+          { enrollmentNo: certificate.enrollmentNumber },
+          { rollNumber: certificate.enrollmentNumber },
+        ],
+      }).select("photo");
+      if (student?.photo) certData.photo = student.photo;
+    }
+
+    res.json({ success: true, data: certData });
   } catch (err) {
     console.error("Certificate verification by number error:", err);
     res.status(500).json({ success: false });
@@ -236,7 +247,10 @@ exports.verifyTypingCertificateByNumber = async (req, res) => {
       }
     }
 
-    res.json({ success: true, data: cert });
+    const certData = cert.toObject();
+    if (!certData.photo && student?.photo) certData.photo = student.photo;
+
+    res.json({ success: true, data: certData });
   } catch (err) {
     console.error("Typing certificate verification error:", err);
     res.status(500).json({ success: false });
