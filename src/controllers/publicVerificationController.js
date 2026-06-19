@@ -126,16 +126,13 @@ exports.verifyCertificateByNumber = async (req, res) => {
     if (!certificateNumber) {
       return res.status(400).json({ success: false, message: "Certificate number required" });
     }
-    if (!dob) {
-      return res.status(400).json({ success: false, message: "Date of birth required" });
-    }
 
     const certificate = await Certificate.findOne({ certificateNumber });
     if (!certificate) {
       return res.status(404).json({ success: false, message: "Certificate not found" });
     }
 
-    if (certificate.dob) {
+    if (dob && certificate.dob) {
       const inputDob = new Date(dob);
       const storedDob = new Date(certificate.dob);
       if (
@@ -222,9 +219,6 @@ exports.verifyTypingCertificateByNumber = async (req, res) => {
     if (!certificateNo) {
       return res.status(400).json({ success: false, message: "Certificate number required" });
     }
-    if (!dob) {
-      return res.status(400).json({ success: false, message: "Date of birth required" });
-    }
 
     const cert = await TypingCertificate.findOne({ certificateNo });
     if (!cert) {
@@ -235,7 +229,7 @@ exports.verifyTypingCertificateByNumber = async (req, res) => {
     const student = await Student.findOne({
       $or: [{ enrollmentNo: cert.enrollmentNumber }, { rollNumber: cert.enrollmentNumber }],
     });
-    if (student && student.dob) {
+    if (dob && student && student.dob) {
       const inputDob = new Date(dob);
       const storedDob = new Date(student.dob);
       if (
