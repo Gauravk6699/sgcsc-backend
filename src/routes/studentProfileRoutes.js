@@ -176,26 +176,31 @@ router.get("/admit-card", studentAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: "Student not found" });
     }
 
-    // Find admit card by student name (most reliable match)
-    // First try to find by student ID reference if available
-    let admitCard = await AdmitCard.findOne({ student: student._id }).lean();
-    
-    // If not found by reference, try by student name
-    if (!admitCard) {
-      admitCard = await AdmitCard.findOne({ studentName: student.name }).lean();
-    }
+    // Find ALL admit cards belonging to this student (multiple courses),
+    // matching by student ID reference, exact name, or fuzzy name.
+    const admitCards = await AdmitCard.find({
+      $or: [
+        { student: student._id },
+        { studentName: student.name },
+        { studentName: { $regex: new RegExp(student.name, 'i') } },
+      ],
+    }).lean();
 
-    // If still not found, try to get student photo from any admit card with matching name
-    if (!admitCard) {
-      admitCard = await AdmitCard.findOne({ studentName: { $regex: new RegExp(student.name, 'i') } }).lean();
-    }
-
-    if (!admitCard) {
+    if (!admitCards || admitCards.length === 0) {
       return res.status(404).json({ success: false, message: "No admit card found" });
     }
 
+    // Dedupe (the $or above can match the same card more than once)
+    const seen = new Set();
+    const uniqueCards = admitCards.filter((c) => {
+      const id = String(c._id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
     // Format the admit card data for the frontend
-    const formattedCard = {
+    const formattedCards = uniqueCards.map((admitCard) => ({
       rollNumber: admitCard.rollNumber,
       name: admitCard.studentName,
       fatherName: admitCard.fatherName,
@@ -209,11 +214,11 @@ router.get("/admit-card", studentAuth, async (req, res) => {
       examDuration: admitCard.examDuration,
       // Include student photo from the student model
       photo: student.photo || null,
-    };
+    }));
 
     res.json({
       success: true,
-      data: formattedCard,
+      data: formattedCards,
     });
   } catch (err) {
     console.error("Admit card fetch error:", err);
