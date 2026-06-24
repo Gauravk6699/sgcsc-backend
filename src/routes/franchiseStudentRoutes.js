@@ -87,6 +87,7 @@ router.post("/", uploadImage.single("photo"), async (req, res) => {
       franchiseId: req.franchise._id.toString(),
       // Do not set username as empty string — keep undefined if absent
       username: req.body.username && req.body.username.trim() ? req.body.username.trim() : undefined,
+      joinDate: req.body.sessionStart || new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
     };

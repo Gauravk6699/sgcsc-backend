@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const franchiseAuth = require("../middleware/franchiseAuthMiddleware");
 const Subject = require("../models/Subject");
+const Course = require("../models/Course");
 const Franchise = require("../models/Franchise");
 const Settings = require("../models/Settings");
 const CreditTransaction = require("../models/CreditTransaction");
@@ -63,6 +64,16 @@ router.get("/:id", async (req, res) => {
 // Create subject for this franchise - DEDUCT 5 CREDITS
 router.post("/", async (req, res) => {
   try {
+    const { course, name } = req.body || {};
+    if (!course || !name?.trim()) {
+      return res.status(400).json({ message: "Course and subject name are required" });
+    }
+
+    const courseDoc = await Course.findById(course);
+    if (!courseDoc) {
+      return res.status(400).json({ message: "Invalid course" });
+    }
+
     const settings = await Settings.getSettings();
     const creditPricing = settings.creditPricing || {};
     const subjectCost = creditPricing.subject || 5;
@@ -70,8 +81,8 @@ router.post("/", async (req, res) => {
     // Check if franchise has enough credits
     const franchise = await Franchise.findById(req.franchise._id);
     if ((franchise.credits || 0) < subjectCost) {
-      return res.status(400).json({ 
-        message: `Insufficient credits. You need ${subjectCost} credits to create a subject.` 
+      return res.status(400).json({
+        message: `Insufficient credits. You need ${subjectCost} credits to create a subject.`
       });
     }
 

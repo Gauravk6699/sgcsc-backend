@@ -57,6 +57,7 @@ router.post("/", async (req, res) => {
       coursePeriodTo,
       dob,
       photo,
+      certificateImage,
     } = req.body;
 
     if (!enrollmentNumber || !name || !fatherName || !courseName || !sessionFrom || !sessionTo || !grade || !certificateNumber || !issueDate) {
@@ -109,6 +110,7 @@ router.post("/", async (req, res) => {
       centerName,
       atcName: centerName,
       photo: photo || "",
+      certificateImage: certificateImage || "",
       franchiseId,
     });
 

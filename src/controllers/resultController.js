@@ -101,14 +101,14 @@ exports.addResult = async (req, res) => {
       }
 
       const maxMarks = subjectDoc.maxMarks || 100;
-      const maxPracticalMarks = subjectDoc.practicalMarks || 0;
+      const maxPracticalMarks = subjectDoc.maxPracticalMarks || 0;
       const marksObtained = Number(sub.marksObtained) || 0;
       const practicalMarks = Number(sub.practicalMarks) || 0;
-      
+
       const subjectTotal = maxMarks + maxPracticalMarks;
       const obtainedTotal = marksObtained + practicalMarks;
       const subjectPercentage = subjectTotal > 0 ? (obtainedTotal / subjectTotal) * 100 : 0;
-      
+
       totalMaxMarks += subjectTotal;
       totalObtained += obtainedTotal;
 
@@ -276,10 +276,10 @@ exports.updateResult = async (req, res) => {
         if (!subjectDoc) continue;
 
         const maxMarks = subjectDoc.maxMarks || 100;
-        const maxPracticalMarks = subjectDoc.practicalMarks || 0;
+        const maxPracticalMarks = subjectDoc.maxPracticalMarks || 0;
         const marksObtained = Number(sub.marksObtained) || 0;
         const practicalMarks = Number(sub.practicalMarks) || 0;
-        
+
         const subjectTotal = maxMarks + maxPracticalMarks;
         const obtainedTotal = marksObtained + practicalMarks;
         const subjectPercentage = subjectTotal > 0 ? (obtainedTotal / subjectTotal) * 100 : 0;
