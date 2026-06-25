@@ -57,6 +57,10 @@ const admitCardSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    photo: {
+      type: String,
+      default: "",
+    },
     // Optional link to Student if you ever want it
     student: {
       type: mongoose.Schema.Types.ObjectId,

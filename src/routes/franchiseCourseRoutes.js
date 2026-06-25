@@ -32,11 +32,14 @@ async function deductCredits(franchiseId, amount, description) {
   return false;
 }
 
-// Get courses for this franchise (own courses only)
+// Get courses for this franchise — its own courses plus admin-created ones
+// (createdBy: null). Excludes other franchises' courses.
 router.get("/", async (req, res) => {
   try {
     const franchiseId = req.franchise._id;
-    const courses = await Course.find({ createdBy: franchiseId }).lean();
+    const courses = await Course.find({
+      $or: [{ createdBy: franchiseId }, { createdBy: null }],
+    }).lean();
     res.json(courses);
   } catch (err) {
     console.error("Franchise get courses error:", err);
@@ -44,16 +47,19 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get single course (own courses only)
+// Get single course (own courses or admin-created ones)
 router.get("/:id", async (req, res) => {
   try {
     const franchiseId = req.franchise._id;
-    const course = await Course.findOne({ _id: req.params.id, createdBy: franchiseId }).lean();
-    
+    const course = await Course.findOne({
+      _id: req.params.id,
+      $or: [{ createdBy: franchiseId }, { createdBy: null }],
+    }).lean();
+
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
-    
+
     res.json(course);
   } catch (err) {
     console.error("Franchise get course error:", err);

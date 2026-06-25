@@ -32,11 +32,14 @@ async function deductCredits(franchiseId, amount, description) {
   return false;
 }
 
-// Get subjects for this franchise (own subjects only)
+// Get subjects for this franchise — its own subjects plus admin-created ones
+// (createdBy: null). Excludes other franchises' subjects.
 router.get("/", async (req, res) => {
   try {
     const franchiseId = req.franchise._id;
-    const subjects = await Subject.find({ createdBy: franchiseId }).populate('course', 'title name').lean();
+    const subjects = await Subject.find({
+      $or: [{ createdBy: franchiseId }, { createdBy: null }],
+    }).populate('course', 'title name').lean();
     res.json(subjects);
   } catch (err) {
     console.error("Franchise get subjects error:", err);
@@ -44,16 +47,19 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get single subject (own subjects only)
+// Get single subject (own subjects or admin-created ones)
 router.get("/:id", async (req, res) => {
   try {
     const franchiseId = req.franchise._id;
-    const subject = await Subject.findOne({ _id: req.params.id, createdBy: franchiseId }).populate('course', 'title name').lean();
-    
+    const subject = await Subject.findOne({
+      _id: req.params.id,
+      $or: [{ createdBy: franchiseId }, { createdBy: null }],
+    }).populate('course', 'title name').lean();
+
     if (!subject) {
       return res.status(404).json({ message: "Subject not found" });
     }
-    
+
     res.json(subject);
   } catch (err) {
     console.error("Franchise get subject error:", err);
