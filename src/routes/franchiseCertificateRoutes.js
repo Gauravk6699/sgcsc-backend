@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
+const verifyAdmin = require("../middleware/authMiddleware");
 const FranchiseCertificate = require("../models/FranchiseCertificate");
+
+// All routes are admin-only
+router.use(verifyAdmin);
 
 // Create franchise certificate
 router.post("/", async (req, res) => {
@@ -11,6 +15,14 @@ router.post("/", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'All fields are required: franchiseName, address, applicantName, atcCode, dateOfIssue, dateOfRenewal'
+      });
+    }
+
+    const existing = await FranchiseCertificate.findOne({ atcCode: String(atcCode).trim() });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: `ATC Code "${String(atcCode).trim()}" is already in use by another certificate.`,
       });
     }
 
@@ -107,6 +119,19 @@ router.put("/:id", async (req, res) => {
     if (dateOfIssue != null) update.dateOfIssue = new Date(dateOfIssue);
     if (dateOfRenewal != null) update.dateOfRenewal = new Date(dateOfRenewal);
     if (certificateImage != null) update.certificateImage = certificateImage;
+
+    if (update.atcCode) {
+      const existing = await FranchiseCertificate.findOne({
+        atcCode: update.atcCode,
+        _id: { $ne: req.params.id },
+      });
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `ATC Code "${update.atcCode}" is already in use by another certificate.`,
+        });
+      }
+    }
 
     const franchiseCertificate = await FranchiseCertificate.findByIdAndUpdate(
       req.params.id,

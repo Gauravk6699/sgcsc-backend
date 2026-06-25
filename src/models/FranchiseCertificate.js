@@ -22,6 +22,7 @@ const franchiseCertificateSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      unique: true,
     },
     dateOfIssue: {
       type: Date,
@@ -40,9 +41,8 @@ const franchiseCertificateSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Index for faster lookups
+// Index for faster lookups (atcCode is indexed via its own `unique: true` above)
 franchiseCertificateSchema.index({ franchiseName: 1 });
-franchiseCertificateSchema.index({ atcCode: 1 });
 franchiseCertificateSchema.index({ applicantName: 1 });
 
 franchiseCertificateSchema.set('toJSON', {
