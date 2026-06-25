@@ -99,7 +99,7 @@ exports.getReceipts = async (req, res) => {
     }
 
     const receipts = await Receipt.find(query)
-      .populate('student', 'name enrollmentNumber rollNumber')
+      .populate('student', 'name enrollmentNumber rollNumber fatherName dob photo')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit)
