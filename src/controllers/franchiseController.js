@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const Franchise = require('../models/Franchise');
 const Student = require('../models/Student');
+const FranchiseCertificate = require('../models/FranchiseCertificate');
 
 /* =========================================================
    HELPERS
@@ -465,10 +466,17 @@ exports.verifyFranchisePublic = async (req, res) => {
       });
     }
 
+    // ATC Code on the franchise certificate is set to match the franchise's
+    // Institute ID, so the same value links a Franchise to its certificate.
+    const certificate = await FranchiseCertificate.findOne({
+      atcCode: instituteId.trim(),
+    }).select("certificateImage atcCode dateOfIssue dateOfRenewal");
+
     return res.json({
       success: true,
       verified: true,
       data: franchise,
+      certificate: certificate || null,
     });
   } catch (err) {
     console.error("verifyFranchisePublic error:", err);
