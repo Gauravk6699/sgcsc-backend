@@ -1,5 +1,27 @@
 const mongoose = require("mongoose");
 const Student = require("../models/Student");
+const Counter = require("../models/Counter");
+
+const COUNTER_ID = "student";
+
+function buildNumbers(seq) {
+  return {
+    rollNumber: String(seq),
+    enrollmentNo: `SG${seq}`,
+    certificateNo: `SGCSC${seq}`,
+  };
+}
+
+/* ---------- GET /api/students/next-numbers ---------- */
+exports.getNextNumbers = async (req, res) => {
+  try {
+    const next = await Counter.peekNext(COUNTER_ID);
+    res.json({ success: true, data: buildNumbers(next) });
+  } catch (err) {
+    console.error("getNextNumbers error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
 /* ---------- POST /api/students ---------- */
 exports.createStudent = async (req, res) => {
@@ -28,10 +50,9 @@ exports.createStudent = async (req, res) => {
       courseName,
       sessionStart,
       sessionEnd,
-      rollNumber,
       feeAmount,
       amountPaid,
-      courses
+      courses,
     } = body;
 
     if (!name || !mobile || !centerName) {
@@ -42,122 +63,104 @@ exports.createStudent = async (req, res) => {
     }
 
     if (!password) {
+      return res.status(400).json({ success: false, message: "Password is required" });
+    }
+
+    // Auto-generate numbers if not provided, otherwise use the overridden values
+    let { rollNumber, enrollmentNo, certificateNo } = body;
+    const needsAutoGen = !rollNumber || !rollNumber.trim();
+
+    if (needsAutoGen) {
+      const seq = await Counter.nextSeq(COUNTER_ID);
+      const generated = buildNumbers(seq);
+      rollNumber   = generated.rollNumber;
+      enrollmentNo = generated.enrollmentNo;
+      certificateNo = generated.certificateNo;
+    } else {
+      rollNumber    = rollNumber.trim();
+      enrollmentNo  = enrollmentNo  ? enrollmentNo.trim()  : `SG${rollNumber}`;
+      certificateNo = certificateNo ? certificateNo.trim() : `SGCSC${rollNumber}`;
+    }
+
+    // Validate uniqueness within the same franchise for roll number
+    const rollConflict = await Student.findOne({ rollNumber, centerName: centerName.trim() }).lean();
+    if (rollConflict) {
       return res.status(400).json({
         success: false,
-        message: "Password is required",
+        message: `Roll number "${rollNumber}" already exists in this center/franchise.`,
       });
     }
 
-    if (!rollNumber || !rollNumber.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Roll number is required",
-      });
+    // Validate global uniqueness for enrollment and certificate numbers
+    const [enrollConflict, certConflict] = await Promise.all([
+      enrollmentNo  ? Student.findOne({ enrollmentNo }).lean()  : null,
+      certificateNo ? Student.findOne({ certificateNo }).lean() : null,
+    ]);
+    if (enrollConflict) {
+      return res.status(400).json({ success: false, message: `Enrollment number "${enrollmentNo}" is already in use.` });
+    }
+    if (certConflict) {
+      return res.status(400).json({ success: false, message: `Certificate number "${certificateNo}" is already in use.` });
     }
 
-    // Explicit uniqueness check across the entire platform (all franchises)
-    const rollExists = await Student.findOne({ rollNumber: rollNumber.trim() }).lean();
-    if (rollExists) {
-      return res.status(400).json({
-        success: false,
-        message: `Roll number "${rollNumber.trim()}" is already assigned to another student on this platform.`,
-      });
-    }
-
-    const enrollmentNoFromBody = body.enrollmentNo;
-    if (enrollmentNoFromBody && enrollmentNoFromBody.trim()) {
-      const enrollExists = await Student.findOne({ enrollmentNo: enrollmentNoFromBody.trim() }).lean();
-      if (enrollExists) {
-        return res.status(400).json({
-          success: false,
-          message: `Enrollment number "${enrollmentNoFromBody.trim()}" is already assigned to another student on this platform.`,
-        });
+    const parsedCourses = (() => {
+      if (!courses) return [];
+      if (typeof courses === "string") {
+        try { return JSON.parse(courses) || []; } catch { return []; }
       }
-    }
+      return Array.isArray(courses) ? courses : [];
+    })();
 
     const student = await Student.create({
       name: name.trim(),
       gender: gender || "",
       dob: dob || null,
-
       fatherName: fatherName || "",
       motherName: motherName || "",
       centerName: centerName.trim(),
-
       email: email || "",
       contact: mobile,
-
       state: state || "",
       district: district || "",
       address: address || "",
-
       examPassed: examPassed || "",
       marksOrGrade: marksOrGrade || "",
       board: board || "",
       passingYear: passingYear || "",
-
       course: courseId || null,
       courseName: courseName || "",
       sessionStart: sessionStart || null,
       sessionEnd: sessionEnd || null,
       joinDate: sessionStart || new Date(),
-
       username: username && username.trim() ? username.trim() : undefined,
-      password: password,
-
-      // 🔥 Cloudinary URL
+      password,
       photo: req.file?.path || "",
-      rollNumber: rollNumber.trim(),
-
+      rollNumber,
+      enrollmentNo,
+      certificateNo,
       feeAmount: Number(feeAmount) || 0,
       amountPaid: Number(amountPaid) || 0,
-      
-      // Multiple courses - parse if JSON string
-      courses: (() => {
-        if (!courses) return [];
-        if (typeof courses === 'string') {
-          try {
-            const parsed = JSON.parse(courses);
-            return Array.isArray(parsed) ? parsed : [];
-          } catch (e) {
-            console.error('Error parsing courses:', e);
-            return [];
-          }
-        }
-        return Array.isArray(courses) ? courses : [];
-      })(),
+      courses: parsedCourses,
     });
 
     res.status(201).json({ success: true, data: student });
-} catch (err) {
-  console.error("createStudent error:", err);
-
-  if (err.code === 11000) {
-    const key = Object.keys(err.keyPattern || {})[0];
-    const messages = {
-      rollNumber:   "Roll number already exists. Each student must have a unique roll number across the entire platform.",
-      enrollmentNo: "Enrollment number already exists. Each student must have a unique enrollment number across the entire platform.",
-      username:     "Username already taken. Please choose a different username.",
-    };
-    return res.status(400).json({
-      success: false,
-      message: messages[key] || "A student with this information already exists.",
-    });
+  } catch (err) {
+    console.error("createStudent error:", err);
+    if (err.code === 11000) {
+      const key = Object.keys(err.keyPattern || {})[0];
+      const messages = {
+        rollNumber:    "Roll number already exists in this center.",
+        enrollmentNo:  "Enrollment number already exists.",
+        certificateNo: "Certificate number already exists.",
+        username:      "Username already taken. Please choose a different username.",
+      };
+      return res.status(400).json({ success: false, message: messages[key] || "A student with this information already exists." });
+    }
+    if (err.name === "ValidationError") {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  if (err.name === "ValidationError") {
-    return res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
-
-  res.status(500).json({
-    success: false,
-    message: "Server error",
-  });
-}
-
 };
 
 /* ---------- GET /api/students/recent-home ---------- */

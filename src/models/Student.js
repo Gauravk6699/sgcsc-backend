@@ -24,11 +24,21 @@ const studentSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Enrollment number (can be same as rollNumber or different) - UNIQUE across platform
+    // Enrollment number - UNIQUE across platform
     enrollmentNo: {
       type: String,
       trim: true,
       unique: true,
+      sparse: true,
+      index: true,
+    },
+
+    // Certificate number - UNIQUE across platform
+    certificateNo: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
       index: true,
     },
 

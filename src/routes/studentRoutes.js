@@ -15,6 +15,7 @@ const {
   getStudentRollNos,
   getStudentByEnrollment,
   getStudentByRoll,
+  getNextNumbers,
 } = require("../controllers/studentController");
 
 /* ================= PUBLIC HOME ROUTES ================= */
@@ -23,6 +24,7 @@ router.get("/certified-home", getCertifiedStudents);
 
 /* ================= PUBLIC ================= */
 router.get("/", getStudents);
+router.get("/next-numbers", getNextNumbers);
 router.get("/rollnos", getStudentRollNos);
 router.get("/lookup/:enrollmentNumber", getStudentByEnrollment);
 router.get("/lookup-roll/:rollNumber", getStudentByRoll);

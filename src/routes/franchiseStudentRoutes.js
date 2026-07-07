@@ -6,9 +6,30 @@ const Student = require("../models/Student");
 const Franchise = require("../models/Franchise");
 const Settings = require("../models/Settings");
 const CreditTransaction = require("../models/CreditTransaction");
+const Counter = require("../models/Counter");
+
+const COUNTER_ID = "student";
+function buildNumbers(seq) {
+  return {
+    rollNumber: String(seq),
+    enrollmentNo: `SG${seq}`,
+    certificateNo: `SGCSC${seq}`,
+  };
+}
 
 // All routes require franchise authentication
 router.use(franchiseAuth);
+
+// Preview next auto-generated numbers (no counter consumed)
+router.get("/next-numbers", async (req, res) => {
+  try {
+    const next = await Counter.peekNext(COUNTER_ID);
+    res.json({ success: true, data: buildNumbers(next) });
+  } catch (err) {
+    console.error("franchise next-numbers error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
 
 // Get students for this franchise
 router.get("/", async (req, res) => {
@@ -50,52 +71,53 @@ router.post("/", uploadImage.single("photo"), async (req, res) => {
     // Parse courses if it's a string
     let coursesData = req.body.courses;
     if (typeof coursesData === "string") {
-      try {
-        coursesData = JSON.parse(coursesData);
-      } catch (e) {
-        coursesData = [];
-      }
+      try { coursesData = JSON.parse(coursesData); } catch (e) { coursesData = []; }
     }
 
-    const { rollNumber, enrollmentNo } = req.body;
+    const franchiseName = req.franchise.instituteName;
 
-    // Explicit platform-wide uniqueness checks
-    if (!rollNumber || !rollNumber.trim()) {
-      return res.status(400).json({ message: "Roll number is required." });
+    // Auto-generate numbers if not provided by user
+    let { rollNumber, enrollmentNo, certificateNo } = req.body;
+    const needsAutoGen = !rollNumber || !rollNumber.trim();
+
+    if (needsAutoGen) {
+      const seq = await Counter.nextSeq(COUNTER_ID);
+      const gen = buildNumbers(seq);
+      rollNumber    = gen.rollNumber;
+      enrollmentNo  = gen.enrollmentNo;
+      certificateNo = gen.certificateNo;
+    } else {
+      rollNumber    = rollNumber.trim();
+      enrollmentNo  = enrollmentNo  ? enrollmentNo.trim()  : `SG${rollNumber}`;
+      certificateNo = certificateNo ? certificateNo.trim() : `SGCSC${rollNumber}`;
     }
 
-    const rollConflict = await Student.findOne({ rollNumber: rollNumber.trim() }).lean();
+    // Per-franchise uniqueness check for roll number
+    const rollConflict = await Student.findOne({ rollNumber, centerName: franchiseName }).lean();
     if (rollConflict) {
-      return res.status(400).json({
-        message: `Roll number "${rollNumber.trim()}" is already assigned to another student on this platform.`,
-      });
+      return res.status(400).json({ message: `Roll number "${rollNumber}" already exists in your center.` });
     }
 
-    if (enrollmentNo && enrollmentNo.trim()) {
-      const enrollConflict = await Student.findOne({ enrollmentNo: enrollmentNo.trim() }).lean();
-      if (enrollConflict) {
-        return res.status(400).json({
-          message: `Enrollment number "${enrollmentNo.trim()}" is already assigned to another student on this platform.`,
-        });
-      }
-    }
+    // Global uniqueness for enrollment and certificate numbers
+    const [enrollConflict, certConflict] = await Promise.all([
+      enrollmentNo  ? Student.findOne({ enrollmentNo }).lean()  : null,
+      certificateNo ? Student.findOne({ certificateNo }).lean() : null,
+    ]);
+    if (enrollConflict) return res.status(400).json({ message: `Enrollment number "${enrollmentNo}" is already in use.` });
+    if (certConflict)  return res.status(400).json({ message: `Certificate number "${certificateNo}" is already in use.` });
 
     const studentData = {
       ...req.body,
       courses: coursesData,
-      centerName: req.franchise.instituteName,
-      franchiseId: req.franchise._id.toString(),
-      // Do not set username as empty string — keep undefined if absent
+      centerName: franchiseName,
+      rollNumber,
+      enrollmentNo,
+      certificateNo,
       username: req.body.username && req.body.username.trim() ? req.body.username.trim() : undefined,
       joinDate: req.body.sessionStart || new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
     };
 
-    // Add photo URL if uploaded
-    if (req.file) {
-      studentData.photo = req.file.path;
-    }
+    if (req.file) studentData.photo = req.file.path;
 
     const student = new Student(studentData);
     await student.save();
