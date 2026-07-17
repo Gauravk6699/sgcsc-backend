@@ -13,10 +13,14 @@ function buildNumbers(seq) {
 }
 
 /* ---------- GET /api/students/next-numbers ---------- */
+// Reserves (consumes) the next sequence number so it always advances, even
+// though the frontend pre-fills it and createStudent then sees a non-empty
+// rollNumber and skips its own auto-gen step. A form that's abandoned after
+// fetching numbers just leaves a small gap in the sequence, which is fine.
 exports.getNextNumbers = async (req, res) => {
   try {
-    const next = await Counter.peekNext(COUNTER_ID);
-    res.json({ success: true, data: buildNumbers(next) });
+    const seq = await Counter.nextSeq(COUNTER_ID);
+    res.json({ success: true, data: buildNumbers(seq) });
   } catch (err) {
     console.error("getNextNumbers error:", err);
     res.status(500).json({ success: false, message: "Server error" });

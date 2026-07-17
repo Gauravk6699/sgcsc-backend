@@ -17,11 +17,4 @@ counterSchema.statics.nextSeq = async function (id) {
   return doc.seq;
 };
 
-// Peek at what the next number would be without consuming it.
-counterSchema.statics.peekNext = async function (id) {
-  const FLOOR = 124450;
-  const doc = await this.findOne({ _id: id }).lean();
-  return Math.max(doc ? doc.seq : FLOOR, FLOOR) + 1;
-};
-
 module.exports = mongoose.model('Counter', counterSchema);

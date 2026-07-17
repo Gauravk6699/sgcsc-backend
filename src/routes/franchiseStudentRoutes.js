@@ -20,11 +20,11 @@ function buildNumbers(seq) {
 // All routes require franchise authentication
 router.use(franchiseAuth);
 
-// Preview next auto-generated numbers (no counter consumed)
+// Reserves (consumes) the next auto-generated numbers so they always advance
 router.get("/next-numbers", async (req, res) => {
   try {
-    const next = await Counter.peekNext(COUNTER_ID);
-    res.json({ success: true, data: buildNumbers(next) });
+    const seq = await Counter.nextSeq(COUNTER_ID);
+    res.json({ success: true, data: buildNumbers(seq) });
   } catch (err) {
     console.error("franchise next-numbers error:", err);
     res.status(500).json({ message: "Server error" });
