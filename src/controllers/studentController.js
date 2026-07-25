@@ -1,8 +1,5 @@
 const mongoose = require("mongoose");
 const Student = require("../models/Student");
-const Counter = require("../models/Counter");
-
-const COUNTER_ID = "student";
 
 function buildNumbers(seq) {
   return {
@@ -13,13 +10,12 @@ function buildNumbers(seq) {
 }
 
 /* ---------- GET /api/students/next-numbers ---------- */
-// Reserves (consumes) the next sequence number so it always advances, even
-// though the frontend pre-fills it and createStudent then sees a non-empty
-// rollNumber and skips its own auto-gen step. A form that's abandoned after
-// fetching numbers just leaves a small gap in the sequence, which is fine.
+// Purely derived from the highest roll/enrollment/certificate number
+// actually saved on a student — viewing/abandoning the form never advances
+// anything, only a real student being created does.
 exports.getNextNumbers = async (req, res) => {
   try {
-    const seq = await Counter.nextSeq(COUNTER_ID);
+    const seq = await Student.getNextSeq();
     res.json({ success: true, data: buildNumbers(seq) });
   } catch (err) {
     console.error("getNextNumbers error:", err);
@@ -75,7 +71,7 @@ exports.createStudent = async (req, res) => {
     const needsAutoGen = !rollNumber || !rollNumber.trim();
 
     if (needsAutoGen) {
-      const seq = await Counter.nextSeq(COUNTER_ID);
+      const seq = await Student.getNextSeq();
       const generated = buildNumbers(seq);
       rollNumber   = generated.rollNumber;
       enrollmentNo = generated.enrollmentNo;

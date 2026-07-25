@@ -6,9 +6,7 @@ const Student = require("../models/Student");
 const Franchise = require("../models/Franchise");
 const Settings = require("../models/Settings");
 const CreditTransaction = require("../models/CreditTransaction");
-const Counter = require("../models/Counter");
 
-const COUNTER_ID = "student";
 function buildNumbers(seq) {
   return {
     rollNumber: String(seq),
@@ -20,10 +18,12 @@ function buildNumbers(seq) {
 // All routes require franchise authentication
 router.use(franchiseAuth);
 
-// Reserves (consumes) the next auto-generated numbers so they always advance
+// Purely derived from the highest roll/enrollment/certificate number
+// actually saved on a student — viewing/abandoning the form never advances
+// anything, only a real student being created does.
 router.get("/next-numbers", async (req, res) => {
   try {
-    const seq = await Counter.nextSeq(COUNTER_ID);
+    const seq = await Student.getNextSeq();
     res.json({ success: true, data: buildNumbers(seq) });
   } catch (err) {
     console.error("franchise next-numbers error:", err);
@@ -81,7 +81,7 @@ router.post("/", uploadImage.single("photo"), async (req, res) => {
     const needsAutoGen = !rollNumber || !rollNumber.trim();
 
     if (needsAutoGen) {
-      const seq = await Counter.nextSeq(COUNTER_ID);
+      const seq = await Student.getNextSeq();
       const gen = buildNumbers(seq);
       rollNumber    = gen.rollNumber;
       enrollmentNo  = gen.enrollmentNo;

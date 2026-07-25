@@ -141,4 +141,31 @@ studentSchema.methods.comparePassword = function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
 
+// First auto-generated sequence is 124451.
+const SEQ_FLOOR = 124450;
+
+function extractSeq(value, prefix) {
+  if (!value) return null;
+  const match = String(value).match(new RegExp(`^${prefix}(\\d+)$`));
+  return match ? parseInt(match[1], 10) : null;
+}
+
+// Derives the next roll/enrollment/certificate sequence number from the
+// highest one actually saved on a student record — not from a separate
+// counter — so it only ever advances when a student is really created, and
+// self-corrects if the highest-numbered student is edited or removed.
+studentSchema.statics.getNextSeq = async function () {
+  const docs = await this.find({}, 'rollNumber enrollmentNo certificateNo').lean();
+  let max = SEQ_FLOOR;
+  for (const doc of docs) {
+    const roll = extractSeq(doc.rollNumber, '');
+    const enroll = extractSeq(doc.enrollmentNo, 'SG');
+    const cert = extractSeq(doc.certificateNo, 'SGCSC');
+    if (roll   !== null && roll   > max) max = roll;
+    if (enroll !== null && enroll > max) max = enroll;
+    if (cert   !== null && cert   > max) max = cert;
+  }
+  return max + 1;
+};
+
 module.exports = mongoose.model('Student', studentSchema);
